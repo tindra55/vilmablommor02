@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<title>Blomidentifiering - Vilma Sjöström</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0"></script>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    text-align:center;
+    background:#f5f7fb;
+    margin:40px;
+}
+
+h1{
+    font-size:36px;
+}
+
+.author{
+    font-size:22px;
+    font-weight:bold;
+    margin-bottom:20px;
+}
+
+#statusBox{
+    margin:auto;
+    padding:15px;
+    width:400px;
+    border-radius:10px;
+    border:2px solid #333;
+    background:#ffffff;
+    margin-bottom:30px;
+}
+
+#preview{
+    margin-top:20px;
+    max-width:300px;
+    border-radius:10px;
+}
+
+#result{
+    font-size:22px;
+    margin-top:20px;
+    font-weight:bold;
+}
+
+button{
+    padding:10px 20px;
+    font-size:16px;
+    margin-top:15px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Blomidentifiering med AI</h1>
+<div class="author">Skapad av Vilma Sjöström</div>
+
+<div id="statusBox">
+<b>Modellstatus:</b>
+<div id="status">Laddar modell...</div>
+</div>
+
+<input type="file" id="imageUpload" accept="image/*">
+
+<br>
+<img id="preview">
+
+<div id="result"></div>
+
+<script>
+
+let model;
+
+// ÄNDRA OM DU HAR ANDRA KLASSER
+const CLASS_NAMES = [
+"daisy",
+"dandelion",
+"rose",
+"sunflower",
+"tulip"
+];
+
+async function loadModel(){
+
+    try{
+
+        document.getElementById("status").innerText = "Laddar modell...";
+
+        model = await tf.loadLayersModel("tfjs_model/model.json");
+
+        document.getElementById("status").innerText =
+        "✅ Modellen är laddad och redo!";
+
+        console.log(model);
+
+    }catch(error){
+
+        document.getElementById("status").innerText =
+        "❌ Kunde inte ladda modellen";
+
+        console.error(error);
+    }
+
+}
+
+document
+.getElementById("imageUpload")
+.addEventListener("change", handleImage);
+
+
+function handleImage(event){
+
+    const file = event.target.files[0];
+
+    const img = document.getElementById("preview");
+
+    img.src = URL.createObjectURL(file);
+
+    img.onload = () => {
+        predict(img);
+    };
+
+}
+
+
+async function predict(img){
+
+    if(!model){
+        alert("Modellen är inte laddad ännu.");
+        return;
+    }
+
+    const inputShape = model.inputs[0].shape;
+    const size = inputShape[1];
+
+    const tensor = tf.browser.fromPixels(img)
+        .resizeNearestNeighbor([size,size])
+        .toFloat()
+        .div(255)
+        .expandDims();
+
+    const prediction = model.predict(tensor);
+    const data = await prediction.data();
+
+    let max = Math.max(...data);
+    let index = data.indexOf(max);
+
+    let flower = CLASS_NAMES[index];
+    let probability = (max*100).toFixed(2);
+
+    document.getElementById("result").innerHTML =
+        "🌸 Blomma: <b>" + flower +
+        "</b><br>Sannolikhet: <b>" +
+        probability + "%</b>";
+
+}
+
+loadModel();
+
+</script>
+
+</body>
+</html>
